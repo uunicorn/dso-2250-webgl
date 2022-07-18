@@ -12,11 +12,8 @@ html, body, #app {
     background-color: #00ffff;
 }
 
-.hh-indicator {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    transform: translate(-50%, 0);
+.H, .V {
+    background-color: #ffffff;
 }
 
 .h-indicator {

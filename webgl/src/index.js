@@ -259,15 +259,20 @@ const Canvas = () => {
     return <canvas id="thecanvas" ref={cref}></canvas>;
 };
 
-const HorizontalSlide = ({value, onChange, onFinished}) => {
+const Slide = ({defaultValue, onChange, vertical, children}) => {
+    const [value, setValue] = useState(Number(defaultValue));
     const ref = useRef();
     const off = useRef();
+
+    const parentRect = () => ref.current.parentElement.getBoundingClientRect();
+    const maxPixels = () => vertical ? parentRect().height : parentRect().width;
+    const curPixels = e => vertical ? e.pageY : e.pageX;
     const style = {
-        color: '#ffff00',
-        left: (100*value) + '%'
+        position: 'absolute',
     };
 
-    const maxX = () => ref.current.parentElement.getBoundingClientRect().width;
+    style[vertical ? 'top' : 'left'] = (100*value) + '%';
+    style['transform'] = vertical ? 'translate(0, -50%)' : 'translate(-50%, 0)';
 
     // cleanup global even listeners if the component dismounted while dragging
     useEffect(() => () => off.current && off.current(), []);
@@ -277,18 +282,18 @@ const HorizontalSlide = ({value, onChange, onFinished}) => {
         e.stopPropagation();
 
         const origValue = value;
-        const origX = e.pageX;
-        const newValue = e => bound(0, origValue + (e.pageX-origX)/maxX(), 1);
+        const origPixels = curPixels(e);
+        const newValue = e => bound(0, origValue + (curPixels(e)-origPixels)/maxPixels(), 1);
 
         const mousemove = e => {
             e.preventDefault();
-            onChange(newValue(e));
+            setValue(newValue(e));
         };
 
         const mouseup = e => {
             e.preventDefault();
+            setValue(newValue(e));
             onChange(newValue(e));
-            onFinished(newValue(e));
             mouseoff();
         };
 
@@ -303,19 +308,19 @@ const HorizontalSlide = ({value, onChange, onFinished}) => {
         off.current = mouseoff;
     };
 
-    return <span ref={ref} style={style} onMouseDown={mousedown} className="hh-indicator">H</span>;
+    return <div ref={ref} style={style} onMouseDown={mousedown}>{children}</div>;
 };
 
 const App = props => {
-    const [value, setValue] = useState(.5);
+    const change = v => console.log(v);
 
     return <div id="all">
         <div id="scope">
             <div id="top-row">
                 <div id="top-left"></div>
                 <div id="top-ind" className="indicator-area">
-                    <HorizontalSlide value={value} onChange={setValue} onFinished={setValue} />
                     <span className="h-indicator trig-position">T</span>
+                    <Slide defaultValue={0.5} onChange={change}><span className="H">H</span></Slide>
                 </div>
                 <div id="top-right"></div>
             </div>
@@ -323,6 +328,7 @@ const App = props => {
                 <div id="left-ind" className="indicator-area">
                     <span className="v-indicator ch1">1</span>
                     <span className="v-indicator ch2">2</span>
+                    <Slide vertical={true} defaultValue={0.5} onChange={change}><div className="V">V</div></Slide>
                 </div>
                 <Canvas />
                 <div id="right-ind" className="indicator-area">
