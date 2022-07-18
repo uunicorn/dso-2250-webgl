@@ -3,8 +3,51 @@ import * as constants from './constants.js'
 import grid from './grid.js';
 import plot from './plot.js';
 import initGl from './glcontext.js';
+import configurationSlice from './configuration-slice.js';
 
 const { useRef, useEffect, useState } = React;
+const { useSelector } = ReactRedux;
+const { configureStore } = RTK;
+const { Provider } = ReactRedux;
+
+const store = configureStore({
+    reducer: {
+        configuration: configurationSlice.reducer
+    }
+});
+
+let oldCfg = '';
+
+store.subscribe(async () => {
+    const cfg = store.getState().configuration;
+    const scfg = JSON.stringify(cfg);
+
+    console.log('store.subscribe', cfg);
+
+    if(oldCfg === scfg)
+        return;
+
+    const response = await fetch('/configuration', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: scfg
+    });
+    console.log('store.listen', response);
+});
+
+const init = async () => {
+    const resp = await fetch('/configuration');
+    const body = await resp.json();
+    oldCfg = JSON.stringify(body);
+    console.log(body);
+    store.dispatch(configurationSlice.actions.setConfiguration(body));
+};
+
+init();
+
+const bound = (l, x, h) => x < l ? l : (x > h ? h : x);
 
 let config = {
     channels: [
@@ -31,9 +74,8 @@ let config = {
         ch2: 0,
         trig: 0
     }
-};
 
-const bound = (l, x, h) => x < l ? l : (x > h ? h : x);
+};
 
 const oldUi = socket => {
 
@@ -264,6 +306,11 @@ const Slide = ({defaultValue, onChange, vertical, children}) => {
     const ref = useRef();
     const off = useRef();
 
+    useEffect(() => setValue(defaultValue), [defaultValue]);
+
+    // cleanup global even listeners if the component dismounted while dragging
+    useEffect(() => () => off.current && off.current(), []);
+
     const parentRect = () => ref.current.parentElement.getBoundingClientRect();
     const maxPixels = () => vertical ? parentRect().height : parentRect().width;
     const curPixels = e => vertical ? e.pageY : e.pageX;
@@ -274,8 +321,6 @@ const Slide = ({defaultValue, onChange, vertical, children}) => {
     style[vertical ? 'top' : 'left'] = (100*value) + '%';
     style['transform'] = vertical ? 'translate(0, -50%)' : 'translate(-50%, 0)';
 
-    // cleanup global even listeners if the component dismounted while dragging
-    useEffect(() => () => off.current && off.current(), []);
 
     const mousedown = e => {
         e.preventDefault();
@@ -312,7 +357,14 @@ const Slide = ({defaultValue, onChange, vertical, children}) => {
 };
 
 const App = props => {
+    const trigOffset = useSelector(state => state.configuration.triggerAddress)/100;
+    const setTriggerOffset = v => store.dispatch(configurationSlice.actions.setTriggerAddress(v*100));
+    const trigLevel = 1-useSelector(state => state.configuration.trigger?.offset);
+    const setTriggerLevel = v => store.dispatch(configurationSlice.actions.setTriggerOffset(1-v));
+
     const change = v => console.log(v);
+
+    console.log('App', trigOffset);
 
     return <div id="all">
         <div id="scope">
@@ -320,7 +372,9 @@ const App = props => {
                 <div id="top-left"></div>
                 <div id="top-ind" className="indicator-area">
                     <span className="h-indicator trig-position">T</span>
-                    <Slide defaultValue={0.5} onChange={change}><span className="H">H</span></Slide>
+                    <Slide defaultValue={trigOffset} onChange={setTriggerOffset}>
+                        <div className="H">H</div>
+                    </Slide>
                 </div>
                 <div id="top-right"></div>
             </div>
@@ -328,7 +382,9 @@ const App = props => {
                 <div id="left-ind" className="indicator-area">
                     <span className="v-indicator ch1">1</span>
                     <span className="v-indicator ch2">2</span>
-                    <Slide vertical={true} defaultValue={0.5} onChange={change}><div className="V">V</div></Slide>
+                    <Slide vertical={true} defaultValue={trigLevel} onChange={setTriggerLevel}>
+                        <div className="V">V</div>
+                    </Slide>
                 </div>
                 <Canvas />
                 <div id="right-ind" className="indicator-area">
@@ -374,7 +430,8 @@ const App = props => {
 };
 
 const main = () => {
-    ReactDOM.render(<App/>, document.getElementById('app'));
+    ReactDOM.render(<Provider store={store}><App/></Provider>, 
+        document.getElementById('app'));
 
 };
 

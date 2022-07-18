@@ -379,7 +379,33 @@ const initDevice = async () => {
         return rc;
     };
 
-    let config = null;
+    let config = {
+        channels: [
+            {
+                voltage: VOLTAGE_1V,
+                coupling: COUPLING_DC,
+                offset: 0.5
+            }, {
+                voltage: VOLTAGE_1V,
+                coupling: COUPLING_DC,
+                offset: 0.5
+            }
+        ],
+        trigger: {
+            source: TRIGGER_CH1,
+            slope: SLOPE_POSITIVE,
+            offset: 0.5
+        },
+        channelSelect: SELECT_CH1CH2,
+        dataLength: 1, // 10240 samples/frame
+        timeBase: 1e-3/10240*DIVS_TIME, // 1ms / DIV
+        triggerAddress: 50,
+        filter: {
+            ch1: 0,
+            ch2: 0,
+            trig: 0
+        }
+    };
 
     console.log('HW version: ' + await dsoGetLogicData());
 
@@ -519,6 +545,8 @@ const initDevice = async () => {
     return {
         stop: stop,
 
+        getConfig: () => config,
+
         configure: async cfg => {
             let restart = false;
 
@@ -552,6 +580,7 @@ expressWebSocket(app, null, {
 });
 
 app.use(express.static('../webgl/dist'));
+app.use(express.json());
 
 app.ws('/frames', (ws, req) => {
     try {
@@ -575,6 +604,18 @@ app.ws('/frames', (ws, req) => {
     } catch(e) {
         console.error(e);
     }
+});
+
+app.get('/configuration', async (request, response) => {
+    const dev = await device;
+    response.send(dev.getConfig());
+});
+
+app.post('/configuration', async (request, response) => {
+    console.log('POST configuration', request.body);
+    const dev = await device;
+    await dev.configure(request.body);
+    response.send({ status: 'ok' });
 });
 
 app.maxConnections = 1024;
