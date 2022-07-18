@@ -1,4 +1,4 @@
-html, body {
+html, body, #app {
     width: 100%;
     height: 100%;
     margin: 0;
@@ -12,16 +12,25 @@ html, body {
     background-color: #00ffff;
 }
 
+.hh-indicator {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    transform: translate(-50%, 0);
+}
+
 .h-indicator {
     position: absolute;
     top: 0px;
     left: 0px;
+    transform: translate(-50%, 0);
 }
 
 .v-indicator {
     position: absolute;
     top: 0px;
     right: 0px;
+    transform: translate(0, -50%);
 }
 
 .ch1 {

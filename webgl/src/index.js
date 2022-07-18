@@ -33,6 +33,8 @@ let config = {
     }
 };
 
+const bound = (l, x, h) => x < l ? l : (x > h ? h : x);
+
 const oldUi = socket => {
 
     $('#start').click(e => {
@@ -49,19 +51,12 @@ const oldUi = socket => {
         }));
     });
 
-    $('#configure').click(async e => {
-        config = eval('(' + $('#config').val() + ')');
-        reconfigure();
-    });
-
     const reconfigure = () => {
         socket.send(JSON.stringify({
             type: 'configure',
             params: config
         }));
     };
-
-    const bound = (l, x, h) => x < l ? l : (x > h ? h : x);
 
     $('.h-indicator').on('mousedown', function(e) {
         e.preventDefault();
@@ -72,7 +67,7 @@ const oldUi = socket => {
         const move = e => {
             e.preventDefault();
             const newX = e.pageX;
-            const maxX = $i.parent().width() - $i.width();
+            const maxX = $i.parent().width();
             const offsetX = bound(0, origOffset.left + newX-origX, maxX);
 
             $i.css({ left: offsetX });
@@ -83,7 +78,7 @@ const oldUi = socket => {
                 .off('mousemove', move)
                 .off('mouseup', up);
 
-            const pos = $i.position().left + $i.width()/2;
+            const pos = $i.position().left;
             const value = pos/$i.parent().width();
             $i.trigger('slide-done', [{ value }]);
         };
@@ -102,7 +97,7 @@ const oldUi = socket => {
         const move = e => {
             e.preventDefault();
             const newY = e.pageY;
-            const maxY = $i.parent().height() - $i.height();
+            const maxY = $i.parent().height();
             const offsetY = bound(0, origOffset.top + newY-origY, maxY);
 
             $i.css({ top: offsetY });
@@ -113,7 +108,7 @@ const oldUi = socket => {
                 .off('mousemove', move)
                 .off('mouseup', up);
 
-            const pos = $i.position().top + $i.height()/2;
+            const pos = $i.position().top;
             const value = pos/$i.parent().height();
             $i.trigger('slide-done', [{ value }]);
         };
@@ -264,12 +259,62 @@ const Canvas = () => {
     return <canvas id="thecanvas" ref={cref}></canvas>;
 };
 
+const HorizontalSlide = ({value, onChange, onFinished}) => {
+    const ref = useRef();
+    const off = useRef();
+    const style = {
+        color: '#ffff00',
+        left: (100*value) + '%'
+    };
+
+    const maxX = () => ref.current.parentElement.getBoundingClientRect().width;
+
+    // cleanup global even listeners if the component dismounted while dragging
+    useEffect(() => () => off.current && off.current(), []);
+
+    const mousedown = e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const origValue = value;
+        const origX = e.pageX;
+        const newValue = e => bound(0, origValue + (e.pageX-origX)/maxX(), 1);
+
+        const mousemove = e => {
+            e.preventDefault();
+            onChange(newValue(e));
+        };
+
+        const mouseup = e => {
+            e.preventDefault();
+            onChange(newValue(e));
+            onFinished(newValue(e));
+            mouseoff();
+        };
+
+        const mouseoff = () => {
+            document.removeEventListener('mouseup', mouseup);
+            document.removeEventListener('mousemove', mousemove);
+        };
+
+        document.addEventListener('mouseup', mouseup);
+        document.addEventListener('mousemove', mousemove);
+
+        off.current = mouseoff;
+    };
+
+    return <span ref={ref} style={style} onMouseDown={mousedown} className="hh-indicator">H</span>;
+};
+
 const App = props => {
+    const [value, setValue] = useState(.5);
+
     return <div id="all">
         <div id="scope">
             <div id="top-row">
                 <div id="top-left"></div>
                 <div id="top-ind" className="indicator-area">
+                    <HorizontalSlide value={value} onChange={setValue} onFinished={setValue} />
                     <span className="h-indicator trig-position">T</span>
                 </div>
                 <div id="top-right"></div>
@@ -318,10 +363,6 @@ const App = props => {
                 <option value="7">20mV</option>
                 <option value="8">10mV</option>
             </select>
-            <br/>
-            <textarea id="config"></textarea>
-            <br/>
-            <button id="configure">Configure</button>
         </div>
     </div>;
 };

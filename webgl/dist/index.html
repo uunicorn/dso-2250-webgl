@@ -5,6 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="jquery-3.6.0.min.js"></script>
+    <script src="react.development.js"></script>
+    <script src="react-dom.development.js"></script>
 <!--
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin="anonymous"></script>
@@ -22,64 +24,6 @@
     <link rel="stylesheet" type="text/css" href="index.css"></link>
 </head>
 <body>
-<div id="all">
-    <div id="scope">
-        <div id="top-row">
-            <div id="top-left"></div>
-            <div id="top-ind" class="indicator-area">
-                <span class="h-indicator trig-position">T</span>
-            </div>
-            <div id="top-right"></div>
-        </div>
-        <div id="mid-row">
-            <div id="left-ind" class="indicator-area">
-                <span class="v-indicator ch1">1</span>
-                <span class="v-indicator ch2">2</span>
-            </div>
-            <canvas id="thecanvas"></canvas>
-            <div id="right-ind" class="indicator-area">
-                <span class="v-indicator trig-level">T</span>
-            </div>
-        </div>
-        <div id="bottom-row">
-            <div id="bottom-left"></div>
-            <div id="bottom-ind" class="indicator-area"></div>
-            <div id="bottom-right"></div>
-        </div>
-    </div>
-    <div id="control">
-        <button id="start">Start</button>
-        <button id="stop">Stop</button>
-        <br>
-        <select id="timebase"></select>
-        <br>
-        Ch1 <select id="ch1-gain">
-            <option value="0">5V</option>
-            <option value="1">2V</option>
-            <option value="2">1V</option>
-            <option value="3">500mV</option>
-            <option value="4">200mV</option>
-            <option value="5">100mV</option>
-            <option value="6">50mV</option>
-            <option value="7">20mV</option>
-            <option value="8">10mV</option>
-        </select>
-        Ch2 <select id="ch2-gain">
-            <option value="0">5V</option>
-            <option value="1">2V</option>
-            <option value="2">1V</option>
-            <option value="3">500mV</option>
-            <option value="4">200mV</option>
-            <option value="5">100mV</option>
-            <option value="6">50mV</option>
-            <option value="7">20mV</option>
-            <option value="8">10mV</option>
-        </select>
-        <br>
-        <textarea id="config"></textarea>
-        <br>
-        <button id="configure">Configure</button>
-    </div>
-</div>
+<div id="app"></div>
 <script type="module" src="index.js"></script>
 </body>
