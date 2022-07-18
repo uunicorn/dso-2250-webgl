@@ -4,6 +4,8 @@ import grid from './grid.js';
 import plot from './plot.js';
 import initGl from './glcontext.js';
 
+const { useRef, useEffect, useState } = React;
+
 let config = {
     channels: [
         {
@@ -31,67 +33,7 @@ let config = {
     }
 };
 
-const main = () => {
-    const glCanvas = document.getElementById("thecanvas");
-    const gl = initGl(glCanvas);
-
-    const gridVao = grid(gl);
-    const plotVao = plot(gl);
-
-    const draw = timestamp => {
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gridVao.draw();
-        plotVao.draw();
-    };
-
-    const redraw = () => window.requestAnimationFrame(draw);
-    
-    redraw();
-
-    let sample_t = 1.0;
-
-    let busy = false;
-    const handleFrame = async frame => {
-        if(busy) {
-            console.log('Opps, frame arrived, but we are still busy');
-            return;
-        }
-        busy = true;
-        try {
-            const buffer = await frame.arrayBuffer();
-            const view = new DataView(buffer);
-            const type = view.getUint16(0);
-
-            if(type === 1) {
-                const hdrLen = view.getUint16(2);
-                const timeBase = view.getFloat32(4);
-                sample_t = view.getFloat32(8); // TODO - set on configure response
-
-                plotVao.setData(sample_t/timeBase, buffer.slice(hdrLen));
-                redraw();
-            } else if(type === 2) {
-                console.log('stopped');
-            }
-        } finally {
-            busy = false;
-        }
-    };
-
-    const { protocol, hostname, port } = window.location;
-    const proto = protocol === 'https' ? 'wss' : 'ws';
-    const url = `${proto}://${hostname}:${port}/frames`;
-    const socket = new WebSocket(url);
-
-
-    socket.addEventListener('open', event => {
-        console.log('Connected');
-    });
-
-    socket.addEventListener('message', event => {
-        handleFrame(event.data);
-    });
+const oldUi = socket => {
 
     $('#start').click(e => {
         socket.send(JSON.stringify({
@@ -244,6 +186,148 @@ const main = () => {
         config.channels[1].voltage = Number($(this).val());
         reconfigure();
     });
+
+};
+
+const connect = newData => {
+    let busy = false;
+    const handleFrame = async frame => {
+        if(busy) {
+            console.log('Opps, frame arrived, but we are still busy');
+            return;
+        }
+        busy = true;
+        try {
+            const buffer = await frame.arrayBuffer();
+            const view = new DataView(buffer);
+            const type = view.getUint16(0);
+
+            if(type === 1) {
+                const hdrLen = view.getUint16(2);
+                const timeBase = view.getFloat32(4);
+                const sample_t = view.getFloat32(8); // TODO - set on configure response
+
+                newData(sample_t/timeBase, buffer.slice(hdrLen));
+            } else if(type === 2) {
+                console.log('stopped');
+            }
+        } finally {
+            busy = false;
+        }
+    };
+
+    const { protocol, hostname, port } = window.location;
+    const proto = protocol === 'https' ? 'wss' : 'ws';
+    const url = `${proto}://${hostname}:${port}/frames`;
+    const socket = new WebSocket(url);
+
+
+    socket.addEventListener('open', event => {
+        console.log('Connected');
+    });
+
+    socket.addEventListener('message', event => {
+        handleFrame(event.data);
+    });
+
+    oldUi(socket);
+};
+
+const Canvas = () => {
+    const cref = useRef();
+
+    useEffect(() => {
+        const glCanvas = cref.current;
+        const gl = initGl(glCanvas);
+
+        const gridVao = grid(gl);
+        const plotVao = plot(gl);
+
+        const draw = timestamp => {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gridVao.draw();
+            plotVao.draw();
+        };
+
+        const redraw = () => window.requestAnimationFrame(draw);
+        
+        redraw();
+
+        connect((scale, buffer) => {
+            plotVao.setData(scale, buffer);
+            redraw();
+        });
+    }, [cref]);
+
+    return <canvas id="thecanvas" ref={cref}></canvas>;
+};
+
+const App = props => {
+    return <div id="all">
+        <div id="scope">
+            <div id="top-row">
+                <div id="top-left"></div>
+                <div id="top-ind" className="indicator-area">
+                    <span className="h-indicator trig-position">T</span>
+                </div>
+                <div id="top-right"></div>
+            </div>
+            <div id="mid-row">
+                <div id="left-ind" className="indicator-area">
+                    <span className="v-indicator ch1">1</span>
+                    <span className="v-indicator ch2">2</span>
+                </div>
+                <Canvas />
+                <div id="right-ind" className="indicator-area">
+                    <span className="v-indicator trig-level">T</span>
+                </div>
+            </div>
+            <div id="bottom-row">
+                <div id="bottom-left"></div>
+                <div id="bottom-ind" className="indicator-area"></div>
+                <div id="bottom-right"></div>
+            </div>
+        </div>
+        <div id="control">
+            <button id="start">Start</button>
+            <button id="stop">Stop</button>
+            <br/>
+            <select id="timebase"></select>
+            <br/>
+            Ch1 <select id="ch1-gain">
+                <option value="0">5V</option>
+                <option value="1">2V</option>
+                <option value="2">1V</option>
+                <option value="3">500mV</option>
+                <option value="4">200mV</option>
+                <option value="5">100mV</option>
+                <option value="6">50mV</option>
+                <option value="7">20mV</option>
+                <option value="8">10mV</option>
+            </select>
+            Ch2 <select id="ch2-gain">
+                <option value="0">5V</option>
+                <option value="1">2V</option>
+                <option value="2">1V</option>
+                <option value="3">500mV</option>
+                <option value="4">200mV</option>
+                <option value="5">100mV</option>
+                <option value="6">50mV</option>
+                <option value="7">20mV</option>
+                <option value="8">10mV</option>
+            </select>
+            <br/>
+            <textarea id="config"></textarea>
+            <br/>
+            <button id="configure">Configure</button>
+        </div>
+    </div>;
+};
+
+const main = () => {
+    ReactDOM.render(<App/>, document.getElementById('app'));
 
 };
 
