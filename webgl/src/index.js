@@ -50,34 +50,6 @@ const init = async () => {
 
 init();
 
-let config = {
-    channels: [
-        {
-            voltage: constants.VOLTAGE_1V,
-            coupling: constants.COUPLING_DC,
-            offset: 0.5
-        }, {
-            voltage: constants.VOLTAGE_1V,
-            coupling: constants.COUPLING_DC,
-            offset: 0.5
-        }
-    ],
-    trigger: {
-        source: constants.TRIGGER_CH1,
-        slope: constants.SLOPE_POSITIVE
-    },
-    channelSelect: constants.SELECT_CH1CH2,
-    dataLength: 1, // 10240 samples/frame
-    timeBase: 1e-3/10240*constants.DIVS_TIME, // 1ms / DIV
-    triggerAddress: 50,
-    filter: {
-        ch1: 0, 
-        ch2: 0,
-        trig: 0
-    }
-
-};
-
 const connect = newData => {
     let busy = false;
     const handleFrame = async frame => {
@@ -237,6 +209,40 @@ const TimeBase = () => {
     </select>;
 };
 
+const TriggerSource = () => {
+    const actions = configurationSlice.actions;
+    const value = useSelector(state => state.configuration.trigger.source);
+    const setTriggerSource = source => store.dispatch(actions.setTriggerSource(source));
+
+    const change = e => {
+        const val = Number(e.target.value);
+        setTriggerSource(val);
+    };
+
+    return <select value={value} onChange={change}>
+        <option value={constants.TRIGGER_CH1}>CH1</option>
+        <option value={constants.TRIGGER_CH2}>CH2</option>
+        <option value={constants.TRIGGER_ALT}>ALT</option>
+        <option value={constants.TRIGGER_EXT}>EXT</option>
+    </select>;
+};
+
+const TriggerSlope = () => {
+    const actions = configurationSlice.actions;
+    const value = useSelector(state => state.configuration.trigger.slope);
+    const setTriggerSlope = slope => store.dispatch(actions.setTriggerSlope(slope));
+
+    const change = e => {
+        const val = Number(e.target.value);
+        setTriggerSlope(val);
+    };
+
+    return <select value={value} onChange={change}>
+        <option value={constants.SLOPE_POSITIVE}>+</option>
+        <option value={constants.SLOPE_NEGATIVE}>-</option>
+    </select>;
+};
+
 const ControlPanel = () => {
     const start = e => {
         e.preventDefault();
@@ -253,6 +259,10 @@ const ControlPanel = () => {
         <button onClick={stop}>Stop</button>
         <br/>
         <TimeBase />
+        <br/>
+        <TriggerSource />
+        <br/>
+        <TriggerSlope />
         <br/>
         Ch1 <ChannelControls ch={0} />
         <br/>
