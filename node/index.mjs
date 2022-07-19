@@ -64,6 +64,8 @@ let nextSessionId = 0;
 const send = msg => ws => new Promise(acc => ws.send(msg, acc));
 const broadcast = msg => Promise.all(Object.values(sessions).map(send(msg)));
 
+const delay = ms => new Promise(acc => setTimeout(acc, ms));
+
 const initDevice = async () => {
     const device = await webusb.requestDevice({
         filters: [{
@@ -480,7 +482,7 @@ const initDevice = async () => {
         return buff;
     };
 
-    const delay = ms => new Promise(acc => setTimeout(acc, ms));
+    dsoConfigure(config);
 
     let running = false;
     let stopped = null;

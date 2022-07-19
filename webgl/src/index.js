@@ -2,6 +2,7 @@
 import * as constants from './constants.js'
 import grid from './grid.js';
 import plot from './plot.js';
+import Slide from './slide.js'
 import initGl from './glcontext.js';
 import configurationSlice from './configuration-slice.js';
 
@@ -46,8 +47,6 @@ const init = async () => {
 };
 
 init();
-
-const bound = (l, x, h) => x < l ? l : (x > h ? h : x);
 
 let config = {
     channels: [
@@ -99,91 +98,6 @@ const oldUi = socket => {
             params: config
         }));
     };
-
-    $('.h-indicator').on('mousedown', function(e) {
-        e.preventDefault();
-        const $i = $(this);
-        const origX = e.pageX;
-        const origOffset = $i.position();
-
-        const move = e => {
-            e.preventDefault();
-            const newX = e.pageX;
-            const maxX = $i.parent().width();
-            const offsetX = bound(0, origOffset.left + newX-origX, maxX);
-
-            $i.css({ left: offsetX });
-        };
-
-        const up = e => {
-            $(document)
-                .off('mousemove', move)
-                .off('mouseup', up);
-
-            const pos = $i.position().left;
-            const value = pos/$i.parent().width();
-            $i.trigger('slide-done', [{ value }]);
-        };
-
-        $(document)
-            .on('mousemove', move)
-            .on('mouseup', up);
-    });
-
-    $('.v-indicator').on('mousedown', function(e) {
-        e.preventDefault();
-        const $i = $(this);
-        const origY = e.pageY;
-        const origOffset = $i.position();
-
-        const move = e => {
-            e.preventDefault();
-            const newY = e.pageY;
-            const maxY = $i.parent().height();
-            const offsetY = bound(0, origOffset.top + newY-origY, maxY);
-
-            $i.css({ top: offsetY });
-        };
-
-        const up = e => {
-            $(document)
-                .off('mousemove', move)
-                .off('mouseup', up);
-
-            const pos = $i.position().top;
-            const value = pos/$i.parent().height();
-            $i.trigger('slide-done', [{ value }]);
-        };
-
-        $(document)
-            .on('mousemove', move)
-            .on('mouseup', up);
-    });
-
-    $('.ch1').on('slide-done', (e, {value}) => {
-        config.channels[0].offset = 1 - value;
-        console.log('ch1');
-        reconfigure();
-    });
-
-    $('.ch2').on('slide-done', (e, {value}) => {
-        config.channels[1].offset = 1 - value;
-        console.log('ch2');
-        reconfigure();
-    });
-
-    $('.trig-level').on('slide-done', (e, {value}) => {
-        config.trigger.offset = 1 - value;
-        console.log('trig-level');
-        reconfigure();
-    });
-
-    $('.trig-position').on('slide-done', (e, {value}) => {
-        config.triggerAddress = value*100;
-
-        console.log('trig-position');
-        reconfigure();
-    });
 
     const timeTxt = v => {
         if(v < 1e-6)
@@ -301,94 +215,41 @@ const Canvas = () => {
     return <canvas id="thecanvas" ref={cref}></canvas>;
 };
 
-const Slide = ({defaultValue, onChange, vertical, children}) => {
-    const [value, setValue] = useState(Number(defaultValue));
-    const ref = useRef();
-    const off = useRef();
-
-    useEffect(() => setValue(defaultValue), [defaultValue]);
-
-    // cleanup global even listeners if the component dismounted while dragging
-    useEffect(() => () => off.current && off.current(), []);
-
-    const parentRect = () => ref.current.parentElement.getBoundingClientRect();
-    const maxPixels = () => vertical ? parentRect().height : parentRect().width;
-    const curPixels = e => vertical ? e.pageY : e.pageX;
-    const style = {
-        position: 'absolute',
-    };
-
-    style[vertical ? 'top' : 'left'] = (100*value) + '%';
-    style['transform'] = vertical ? 'translate(0, -50%)' : 'translate(-50%, 0)';
-
-
-    const mousedown = e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const origValue = value;
-        const origPixels = curPixels(e);
-        const newValue = e => bound(0, origValue + (curPixels(e)-origPixels)/maxPixels(), 1);
-
-        const mousemove = e => {
-            e.preventDefault();
-            setValue(newValue(e));
-        };
-
-        const mouseup = e => {
-            e.preventDefault();
-            setValue(newValue(e));
-            onChange(newValue(e));
-            mouseoff();
-        };
-
-        const mouseoff = () => {
-            document.removeEventListener('mouseup', mouseup);
-            document.removeEventListener('mousemove', mousemove);
-        };
-
-        document.addEventListener('mouseup', mouseup);
-        document.addEventListener('mousemove', mousemove);
-
-        off.current = mouseoff;
-    };
-
-    return <div ref={ref} style={style} onMouseDown={mousedown}>{children}</div>;
-};
-
 const App = props => {
     const trigOffset = useSelector(state => state.configuration.triggerAddress)/100;
-    const setTriggerOffset = v => store.dispatch(configurationSlice.actions.setTriggerAddress(v*100));
-    const trigLevel = 1-useSelector(state => state.configuration.trigger?.offset);
-    const setTriggerLevel = v => store.dispatch(configurationSlice.actions.setTriggerOffset(1-v));
+    const trigLevel = 1-useSelector(state => state.configuration.trigger.offset);
+    const chLevels = [0,1].map(ch => 1-useSelector(state => state.configuration.channels[ch].offset));
 
-    const change = v => console.log(v);
-
-    console.log('App', trigOffset);
+    const actions = configurationSlice.actions;
+    const setTriggerOffset = v => store.dispatch(actions.setTriggerAddress(v*100));
+    const setTriggerLevel = v => store.dispatch(actions.setTriggerOffset(1-v));
+    const setChLevel = ch => v => store.dispatch(actions.setChannelOffset({ ch, offset: 1-v }));
 
     return <div id="all">
         <div id="scope">
             <div id="top-row">
                 <div id="top-left"></div>
                 <div id="top-ind" className="indicator-area">
-                    <span className="h-indicator trig-position">T</span>
                     <Slide defaultValue={trigOffset} onChange={setTriggerOffset}>
-                        <div className="H">H</div>
+                        <div className="trig-position">T</div>
                     </Slide>
                 </div>
                 <div id="top-right"></div>
             </div>
             <div id="mid-row">
                 <div id="left-ind" className="indicator-area">
-                    <span className="v-indicator ch1">1</span>
-                    <span className="v-indicator ch2">2</span>
-                    <Slide vertical={true} defaultValue={trigLevel} onChange={setTriggerLevel}>
-                        <div className="V">V</div>
+                    <Slide vertical={true} defaultValue={chLevels[0]} onChange={setChLevel(0)}>
+                        <div className="ch1">1</div>
+                    </Slide>
+                    <Slide vertical={true} defaultValue={chLevels[1]} onChange={setChLevel(1)}>
+                        <div className="ch2">2</div>
                     </Slide>
                 </div>
                 <Canvas />
                 <div id="right-ind" className="indicator-area">
-                    <span className="v-indicator trig-level">T</span>
+                    <Slide vertical={true} defaultValue={trigLevel} onChange={setTriggerLevel}>
+                        <div className="trig-level">T</div>
+                    </Slide>
                 </div>
             </div>
             <div id="bottom-row">

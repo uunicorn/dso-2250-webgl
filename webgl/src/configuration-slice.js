@@ -5,7 +5,10 @@ import * as constants from './constants.js'
 
 export default createSlice({
     name: 'configuration',
-    initialState: {},
+    initialState: {
+        channels: [{}, {}],
+        trigger: {}
+    },
     reducers: {
         setGain: (state, {payload}) => { state.channels[payload.ch].voltage = payload.gainId; },
         setChannelOffset: (state, {payload}) => { state.channels[payload.ch].offset = payload.offset; },
