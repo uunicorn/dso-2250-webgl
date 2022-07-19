@@ -28,6 +28,8 @@ store.subscribe(async () => {
     if(oldCfg === scfg)
         return;
 
+    oldCfg = scfg;
+
     const response = await fetch('/configuration', {
         method: 'POST',
         headers: {
@@ -76,70 +78,6 @@ let config = {
 
 };
 
-const oldUi = socket => {
-
-    $('#start').click(e => {
-        socket.send(JSON.stringify({
-            type: 'start',
-            params: {}
-        }));
-    });
-
-    $('#stop').click(e => {
-        socket.send(JSON.stringify({
-            type: 'stop',
-            params: {}
-        }));
-    });
-
-    const reconfigure = () => {
-        socket.send(JSON.stringify({
-            type: 'configure',
-            params: config
-        }));
-    };
-
-    const timeTxt = v => {
-        if(v < 1e-6)
-            return `${v*1e9 + 0.5 | 0} ns`;
-
-        if(v < 1e-3)
-            return `${v*1e6 + 0.5 | 0} us`;
-
-        if(v < 1)
-            return `${v*1e3 + 0.5 | 0} ms`;
-
-        return `${v + 0.5 | 0} s`;
-    };
-
-    for(let t = 100e-9;t < 1;t *= 10) {
-        for(let m of [1, 2, 4]) {
-            const tt = t*m;
-
-            $('<option>')
-                .attr('value', tt)
-                .text(timeTxt(tt))
-                .appendTo($('#timebase'));
-        }
-    }
-
-    $('#timebase').change(function(e) {
-        config.timeBase = Number($(this).val())*constants.DIVS_TIME/10240;
-        reconfigure();
-    });
-
-    $('#ch1-gain').change(function(e) {
-        config.channels[0].voltage = Number($(this).val());
-        reconfigure();
-    });
-
-    $('#ch2-gain').change(function(e) {
-        config.channels[1].voltage = Number($(this).val());
-        reconfigure();
-    });
-
-};
-
 const connect = newData => {
     let busy = false;
     const handleFrame = async frame => {
@@ -180,8 +118,6 @@ const connect = newData => {
     socket.addEventListener('message', event => {
         handleFrame(event.data);
     });
-
-    oldUi(socket);
 };
 
 const Canvas = () => {
@@ -213,6 +149,115 @@ const Canvas = () => {
     }, [cref]);
 
     return <canvas id="thecanvas" ref={cref}></canvas>;
+};
+
+const VoltageGain = ({ch}) => {
+    const actions = configurationSlice.actions;
+    const gain = useSelector(state => state.configuration.channels[ch].voltage);
+    const setGain = gainId => store.dispatch(actions.setGain({ ch, gainId }));
+
+    const change = e => {
+        const val = Number(e.target.value);
+        setGain(val);
+    };
+
+    return <select value={gain} onChange={change}>
+        <option value={ constants.VOLTAGE_5V }>5V</option>
+        <option value={ constants.VOLTAGE_2V }>2V</option>
+        <option value={ constants.VOLTAGE_1V }>1V</option>
+        <option value={ constants.VOLTAGE_500mV }>500mV</option>
+        <option value={ constants.VOLTAGE_200mV }>200mV</option>
+        <option value={ constants.VOLTAGE_100mV }>100mV</option>
+        <option value={ constants.VOLTAGE_50mV }>50mV</option>
+        <option value={ constants.VOLTAGE_20mV }>20mV</option>
+        <option value={ constants.VOLTAGE_10mV }>10mV</option>
+    </select>;
+};
+
+const Coupling = ({ch}) => {
+    const actions = configurationSlice.actions;
+    const value = useSelector(state => state.configuration.channels[ch].coupling);
+    const setCoupling = coupling => store.dispatch(actions.setCoupling({ ch, coupling }));
+
+    const change = e => {
+        const val = Number(e.target.value);
+        setCoupling(val);
+    };
+
+    return <select value={value} onChange={change}>
+        <option value={constants.COUPLING_AC}>AC</option>
+        <option value={constants.COUPLING_DC}>DC</option>
+        <option value={constants.COUPLING_OFF}>OFF</option>
+    </select>;
+};
+
+const ChannelControls = ({ch}) => {
+    return <>
+        <VoltageGain ch={ch} />
+        <Coupling ch={ch} />
+    </>;
+};
+
+const TimeBase = () => {
+    const actions = configurationSlice.actions;
+    const timeBase = useSelector(state => state.configuration.timeBase);
+    const setTimeBase = t => store.dispatch(actions.setTimeBase(t));
+
+    const change = e => {
+        const val = Number(e.target.value);
+        console.log(val);
+        setTimeBase(val);
+    };
+
+    const timeTxt = v => {
+        if(v < 1e-6)
+            return `${v*1e9 + 0.5 | 0} ns`;
+
+        if(v < 1e-3)
+            return `${v*1e6 + 0.5 | 0} us`;
+
+        if(v < 1)
+            return `${v*1e3 + 0.5 | 0} ms`;
+
+        return `${v + 0.5 | 0} s`;
+    };
+
+    const times = [];
+
+    for(let t = 100e-9;t < 1;t *= 10) {
+        for(let m of [1, 2, 4]) {
+            const tt = t*m;
+
+            times.push({ t: tt*constants.DIVS_TIME/10240, text: timeTxt(tt) });
+        }
+    }
+
+    return <select value={timeBase} onChange={change}>
+        { times.map(({t, text}) => <option key={t} value={t}>{text}</option> ) }
+    </select>;
+};
+
+const ControlPanel = () => {
+    const start = e => {
+        e.preventDefault();
+        fetch('/start');
+    };
+
+    const stop = e => {
+        e.preventDefault();
+        fetch('/stop');
+    };
+
+    return <div id="control">
+        <button onClick={start}>Start</button>
+        <button onClick={stop}>Stop</button>
+        <br/>
+        <TimeBase />
+        <br/>
+        Ch1 <ChannelControls ch={0} />
+        <br/>
+        Ch2 <ChannelControls ch={1} />
+    </div>;
 };
 
 const App = props => {
@@ -258,35 +303,7 @@ const App = props => {
                 <div id="bottom-right"></div>
             </div>
         </div>
-        <div id="control">
-            <button id="start">Start</button>
-            <button id="stop">Stop</button>
-            <br/>
-            <select id="timebase"></select>
-            <br/>
-            Ch1 <select id="ch1-gain">
-                <option value="0">5V</option>
-                <option value="1">2V</option>
-                <option value="2">1V</option>
-                <option value="3">500mV</option>
-                <option value="4">200mV</option>
-                <option value="5">100mV</option>
-                <option value="6">50mV</option>
-                <option value="7">20mV</option>
-                <option value="8">10mV</option>
-            </select>
-            Ch2 <select id="ch2-gain">
-                <option value="0">5V</option>
-                <option value="1">2V</option>
-                <option value="2">1V</option>
-                <option value="3">500mV</option>
-                <option value="4">200mV</option>
-                <option value="5">100mV</option>
-                <option value="6">50mV</option>
-                <option value="7">20mV</option>
-                <option value="8">10mV</option>
-            </select>
-        </div>
+        <ControlPanel />
     </div>;
 };
 

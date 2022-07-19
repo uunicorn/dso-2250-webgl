@@ -608,6 +608,18 @@ app.ws('/frames', (ws, req) => {
     }
 });
 
+app.get('/start', async (request, response) => {
+    const dev = await device;
+    dev.start(); // don't wait for start to finish
+    response.send('ok');
+});
+
+app.get('/stop', async (request, response) => {
+    const dev = await device;
+    await dev.stop();
+    response.send('ok');
+});
+
 app.get('/configuration', async (request, response) => {
     const dev = await device;
     response.send(dev.getConfig());
