@@ -4,30 +4,21 @@ html, body, #app {
     margin: 0;
 }
 
+.buttons .btn {
+    float: right;
+    margin-left: 1em;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
 .indicator-area {
     position: relative;
 }
 
 .trig-position, .trig-level {
     background-color: #00ffff;
-}
-
-.H, .V {
-    background-color: #ffffff;
-}
-
-.h-indicator {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    transform: translate(-50%, 0);
-}
-
-.v-indicator {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    transform: translate(0, -50%);
 }
 
 .ch1 {
@@ -55,20 +46,23 @@ html, body, #app {
 
 #left-ind {
     width: 1em;
-    flex-grow: 1;
 }
 
 #right-ind {
     width: 1em;
+}
+
+#canvas-container {
     flex-grow: 1;
+    overflow: hidden;
 }
 
 #thecanvas {
-    flex-grow: 1;
 }
 
 #mid-row {
     flex-grow: 1;
+    min-height: 0;
     display: flex;
     flex-direction: row;
 }
@@ -94,6 +88,7 @@ html, body, #app {
 
 #scope {
     flex-grow: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -103,4 +98,5 @@ html, body, #app {
 
 #control {
     width: 30em;
+    padding: 1em;
 }

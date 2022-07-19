@@ -3,7 +3,7 @@ import * as constants from './constants.js'
 import grid from './grid.js';
 import plot from './plot.js';
 import Slide from './slide.js'
-import initGl from './glcontext.js';
+import initGl, { resizeCanvasToDisplaySize } from './glcontext.js';
 import configurationSlice from './configuration-slice.js';
 
 const { useRef, useEffect, useState } = React;
@@ -103,6 +103,8 @@ const Canvas = () => {
         const plotVao = plot(gl);
 
         const draw = timestamp => {
+            resizeCanvasToDisplaySize(glCanvas, gl);
+
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -112,6 +114,8 @@ const Canvas = () => {
 
         const redraw = () => window.requestAnimationFrame(draw);
         
+        window.addEventListener('resize', () => draw());
+
         redraw();
 
         connect((scale, buffer) => {
@@ -133,7 +137,7 @@ const VoltageGain = ({ch}) => {
         setGain(val);
     };
 
-    return <select value={gain} onChange={change}>
+    return <select className="form-control" value={gain} onChange={change}>
         <option value={ constants.VOLTAGE_5V }>5V</option>
         <option value={ constants.VOLTAGE_2V }>2V</option>
         <option value={ constants.VOLTAGE_1V }>1V</option>
@@ -156,7 +160,7 @@ const Coupling = ({ch}) => {
         setCoupling(val);
     };
 
-    return <select value={value} onChange={change}>
+    return <select className="form-control" value={value} onChange={change}>
         <option value={constants.COUPLING_AC}>AC</option>
         <option value={constants.COUPLING_DC}>DC</option>
         <option value={constants.COUPLING_OFF}>OFF</option>
@@ -164,10 +168,13 @@ const Coupling = ({ch}) => {
 };
 
 const ChannelControls = ({ch}) => {
-    return <>
-        <VoltageGain ch={ch} />
-        <Coupling ch={ch} />
-    </>;
+    const name = ['CH1', 'CH2'][ch];
+
+    return <div className="form-group row">
+        <label className="col-sm-2 col-form-label">{name}</label>
+        <div className="col-sm-5"><VoltageGain ch={ch} /></div>
+        <div className="col-sm-5"><Coupling ch={ch} /></div>
+    </div>;
 };
 
 const TimeBase = () => {
@@ -204,12 +211,12 @@ const TimeBase = () => {
         }
     }
 
-    return <select value={timeBase} onChange={change}>
+    return <select className="form-control" value={timeBase} onChange={change}>
         { times.map(({t, text}) => <option key={t} value={t}>{text}</option> ) }
     </select>;
 };
 
-const TriggerSource = () => {
+const TriggerSource = props => {
     const actions = configurationSlice.actions;
     const value = useSelector(state => state.configuration.trigger.source);
     const setTriggerSource = source => store.dispatch(actions.setTriggerSource(source));
@@ -219,7 +226,7 @@ const TriggerSource = () => {
         setTriggerSource(val);
     };
 
-    return <select value={value} onChange={change}>
+    return <select className="form-control" value={value} onChange={change} {...props}>
         <option value={constants.TRIGGER_CH1}>CH1</option>
         <option value={constants.TRIGGER_CH2}>CH2</option>
         <option value={constants.TRIGGER_ALT}>ALT</option>
@@ -237,9 +244,9 @@ const TriggerSlope = () => {
         setTriggerSlope(val);
     };
 
-    return <select value={value} onChange={change}>
-        <option value={constants.SLOPE_POSITIVE}>+</option>
-        <option value={constants.SLOPE_NEGATIVE}>-</option>
+    return <select className="form-control" value={value} onChange={change}>
+        <option value={constants.SLOPE_POSITIVE}>↗</option>
+        <option value={constants.SLOPE_NEGATIVE}>↘</option>
     </select>;
 };
 
@@ -255,18 +262,24 @@ const ControlPanel = () => {
     };
 
     return <div id="control">
-        <button onClick={start}>Start</button>
-        <button onClick={stop}>Stop</button>
-        <br/>
-        <TimeBase />
-        <br/>
-        <TriggerSource />
-        <br/>
-        <TriggerSlope />
-        <br/>
-        Ch1 <ChannelControls ch={0} />
-        <br/>
-        Ch2 <ChannelControls ch={1} />
+        <form>
+            <div className="form-group row">
+                <label className="col-sm-2 col-form-label">Timebase</label>
+                <div className="col-sm-8"><TimeBase /></div>
+                <div className="col-sm-2 col-form-label">/ div</div>
+            </div>
+            <div className="form-group row">
+                <label className="col-sm-2 col-form-label">Trigger</label>
+                <div className="col-sm-5"><TriggerSource /></div>
+                <div className="col-sm-5"><TriggerSlope /></div>
+            </div>
+            <ChannelControls ch={0} />
+            <ChannelControls ch={1} />
+            <div className="form-group buttons">
+                <button className="btn btn-primary" onClick={start}>Start</button>
+                <button className="btn btn-primary" onClick={stop}>Stop</button>
+            </div>
+        </form>
     </div>;
 };
 
@@ -300,7 +313,9 @@ const App = props => {
                         <div className="ch2">2</div>
                     </Slide>
                 </div>
-                <Canvas />
+                <div id="canvas-container">
+                    <Canvas />
+                </div>
                 <div id="right-ind" className="indicator-area">
                     <Slide vertical={true} defaultValue={trigLevel} onChange={setTriggerLevel}>
                         <div className="trig-level">T</div>
