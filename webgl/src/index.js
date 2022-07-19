@@ -276,8 +276,8 @@ const ControlPanel = () => {
             <ChannelControls ch={0} />
             <ChannelControls ch={1} />
             <div className="form-group buttons">
-                <button className="btn btn-primary" onClick={start}>Start</button>
-                <button className="btn btn-primary" onClick={stop}>Stop</button>
+                <button className="btn btn-danger" onClick={stop}>Stop</button>
+                <button className="btn btn-success" onClick={start}>Start</button>
             </div>
         </form>
     </div>;
