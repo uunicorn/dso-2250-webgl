@@ -1,5 +1,6 @@
 webgl/dist
 webgl/node_modules
+webgl/package-lock.json
 node/node_modules
 node/package-lock.json
 perl

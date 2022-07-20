@@ -1,8 +1,8 @@
 
-import express from 'express';
-import WebSocket from 'ws';
-import expressWebSocket from 'express-ws';
-import { webusb, usb } from 'usb';
+const express = require('express');
+const WebSocket = require('ws');
+const expressWebSocket = require('express-ws');
+const { webusb, usb } = require('usb');
 
 const CONTROL_COMMAND = 0xA2;
 const CONTROL_GETSPEED = 0xB2;

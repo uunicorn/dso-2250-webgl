@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "express": "^4.18.1",
     "express-ws": "^5.0.2",
     "usb": "^2.4.3"
   }
